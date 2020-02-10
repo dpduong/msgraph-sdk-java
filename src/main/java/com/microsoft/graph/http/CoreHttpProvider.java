@@ -254,7 +254,7 @@ public class CoreHttpProvider implements IHttpProvider {
 				okBuilder.retryOnConnectionFailure(false);
 				this.corehttpClient = okBuilder.build();
 			}
-			
+
 			// Request level middleware options
 			RedirectOptions redirectOptions = new RedirectOptions(request.getMaxRedirects() > 0? request.getMaxRedirects() : this.connectionConfig.getMaxRedirects(),
 					request.getShouldRedirect() != null? request.getShouldRedirect() : this.connectionConfig.getShouldRedirect());
@@ -267,8 +267,9 @@ public class CoreHttpProvider implements IHttpProvider {
 					.newBuilder()
 					.tag(RedirectOptions.class, redirectOptions)
 					.tag(RetryOptions.class, retryOptions);
-			
+
 			String contenttype = null;
+            Response response = null;
 
 			try {
 				logger.logDebug("Request Method " + request.getHttpMethod().toString());
@@ -353,7 +354,7 @@ public class CoreHttpProvider implements IHttpProvider {
 				coreHttpRequest = corehttpRequestBuilder.build();
 
 				// Call being executed
-				Response response = corehttpClient.newCall(coreHttpRequest).execute();
+				response = corehttpClient.newCall(coreHttpRequest).execute();
 
 				if (handler != null) {
 					handler.configConnection(response);
@@ -377,7 +378,7 @@ public class CoreHttpProvider implements IHttpProvider {
 
 				if (response.code() == HttpResponseCode.HTTP_NOBODY
 						|| response.code() == HttpResponseCode.HTTP_NOT_MODIFIED) {
-					logger.logDebug("Handling response with no body");                  
+					logger.logDebug("Handling response with no body");
 					return handleEmptyResponse(CoreHttpProvider.getResponseHeadersAsMapOfStringList(response), resultClass);
 				}
 
@@ -408,6 +409,10 @@ public class CoreHttpProvider implements IHttpProvider {
 						logger.logError(e.getMessage(), e);
 					}
 				}
+
+                if (response != null) {
+                    response.close();
+                }
 			}
 		} catch (final GraphServiceException ex) {
 			final boolean shouldLogVerbosely = logger.getLoggingLevel() == LoggerLevel.DEBUG;
@@ -516,12 +521,12 @@ public class CoreHttpProvider implements IHttpProvider {
 
 	/**
 	 * Handles the case where the response body is empty
-	 * 
+	 *
 	 * @param responseHeaders the response headers
 	 * @param clazz           the type of the response object
 	 * @return                the JSON object
 	 */
-	private <Result> Result handleEmptyResponse(Map<String, List<String>> responseHeaders, final Class<Result> clazz) 
+	private <Result> Result handleEmptyResponse(Map<String, List<String>> responseHeaders, final Class<Result> clazz)
 			throws UnsupportedEncodingException{
 		//Create an empty object to attach the response headers to
 		InputStream in = new ByteArrayInputStream("{}".getBytes(Constants.JSON_ENCODING));
